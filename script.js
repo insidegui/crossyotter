@@ -78,6 +78,8 @@ const TILE_SIZE = 50;
 const FROG_SIZE = 40;
 const CANVAS_WIDTH = canvas.width;
 const CANVAS_HEIGHT = canvas.height;
+// for frame rate–independent movement
+let lastTimestamp = null;
 
 let frog = {
   x: (CANVAS_WIDTH - FROG_SIZE) / 2,
@@ -99,8 +101,10 @@ class Car {
     this.spriteName = spriteName;
   }
 
-  update() {
-    this.x += this.speed * this.direction;
+  // dt is elapsed time in seconds since last frame
+  update(dt) {
+    // original speed values are in px per frame at 60fps
+    this.x += this.speed * 60 * dt * this.direction;
     if (this.direction === 1 && this.x > CANVAS_WIDTH) {
       this.x = -this.width;
     } else if (this.direction === -1 && this.x + this.width < 0) {
@@ -202,10 +206,11 @@ function detectCollision(rect1, rect2) {
          rect1.y + rect1.height > rect2.y;
 }
 
-function update() {
+// update game state; dt is elapsed time in seconds
+function update(dt) {
   if (gameState !== 'playing') return;
-  // move cars only when playing
-  cars.forEach(car => car.update());
+  // move cars only when playing (frame rate–independent)
+  cars.forEach(car => car.update(dt));
   // collision detection
   for (const car of cars) {
     if (detectCollision(frog, car)) {
@@ -265,10 +270,18 @@ function reset() {
   frog.direction = 'front';
   initCars();
   gameState = 'playing';
+  // reset timing for consistent speed
+  lastTimestamp = null;
 }
 
-function gameLoop() {
-  update();
+// main loop: timestamp is provided by requestAnimationFrame (ms)
+function gameLoop(timestamp) {
+  if (lastTimestamp === null) {
+    lastTimestamp = timestamp;
+  }
+  const dt = (timestamp - lastTimestamp) / 1000;
+  lastTimestamp = timestamp;
+  update(dt);
   draw();
   requestAnimationFrame(gameLoop);
 }
@@ -314,5 +327,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// start game loop with frame timing
 reset();
-gameLoop();
+lastTimestamp = null;
+requestAnimationFrame(gameLoop);
