@@ -78,12 +78,16 @@ const TILE_SIZE = 50;
 const FROG_SIZE = 40;
 const CANVAS_WIDTH = canvas.width;
 const CANVAS_HEIGHT = canvas.height;
+// frog start position
+const START_X = (CANVAS_WIDTH - FROG_SIZE) / 2;
+const START_Y = CANVAS_HEIGHT - FROG_SIZE - 5;
 // for frame rate–independent movement
 let lastTimestamp = null;
 
+// main character: frog (otter) with direction state
 let frog = {
-  x: (CANVAS_WIDTH - FROG_SIZE) / 2,
-  y: CANVAS_HEIGHT - FROG_SIZE - 5,
+  x: START_X,
+  y: START_Y,
   width: FROG_SIZE,
   height: FROG_SIZE,
   direction: 'front'
@@ -155,6 +159,43 @@ for (let i = 1; i <= 4; i++) {
   prizeSprites[name] = img;
 }
 
+// HUD layout constants
+const HUD_MARGIN_X = 10;
+const HEART_SIZE = 30;
+const HEART_SPACING = 5;
+const HUD_PADDING = 10;
+
+// scoring & lives system
+const maxLives = 3;
+let lives = maxLives;
+let score = 0;
+let highScore = parseInt(localStorage.getItem('highScore'), 10) || 0;
+// load heart sprites
+const heartSprites = { full: new Image(), empty: new Image() };
+heartSprites.full.src = 'sprites/heart_full.png';
+heartSprites.empty.src = 'sprites/heart_empty.png';
+// draw HUD: hearts and scores
+function drawHUD() {
+  for (let i = 0; i < maxLives; i++) {
+    const x = HUD_MARGIN_X + i * (HEART_SIZE + HEART_SPACING);
+    const y = HUD_MARGIN_X;
+    const img = i < lives ? heartSprites.full : heartSprites.empty;
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, x, y, HEART_SIZE, HEART_SIZE);
+    } else {
+      ctx.fillStyle = i < lives ? 'red' : 'gray';
+      ctx.fillRect(x, y, HEART_SIZE, HEART_SIZE);
+    }
+  }
+  // draw score and high score
+  ctx.fillStyle = 'white';
+  ctx.font = '20px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`Score: ${score}`, HUD_MARGIN_X, HEART_SIZE + HUD_MARGIN_X);
+  ctx.textAlign = 'right';
+  ctx.fillText(`High: ${highScore}`, CANVAS_WIDTH - HUD_MARGIN_X, HUD_MARGIN_X);
+}
 // prize object
 let prize = { x: 0, y: 0, width: FROG_SIZE, height: FROG_SIZE, spriteName: '' };
 
@@ -167,7 +208,13 @@ function placePrize() {
   for (let k = minK; k <= maxK; k++) {
     allowedXs.push(initX + k * TILE_SIZE);
   }
-  prize.x = allowedXs[Math.floor(Math.random() * allowedXs.length)];
+  // restrict spawn to avoid HUD covering (hearts and score)
+  const heartRegionWidth = maxLives * HEART_SIZE + (maxLives - 1) * HEART_SPACING;
+  const heartsEndX = HUD_MARGIN_X + heartRegionWidth;
+  const sidePadding = heartsEndX + HUD_PADDING;
+  const safeXs = allowedXs.filter(x => x >= sidePadding && x <= CANVAS_WIDTH - FROG_SIZE - sidePadding);
+  const xChoices = safeXs.length > 0 ? safeXs : allowedXs;
+  prize.x = xChoices[Math.floor(Math.random() * xChoices.length)];
   prize.y = (TILE_SIZE - FROG_SIZE) / 2;
   prize.width = FROG_SIZE;
   prize.height = FROG_SIZE;
@@ -213,8 +260,6 @@ function drawFrog() {
   let spriteName;
   if (gameState === 'gameover') {
     spriteName = 'dead';
-  } else if (gameState === 'win') {
-    spriteName = 'victory';
   } else {
     spriteName = frog.direction || 'front';
   }
@@ -248,20 +293,48 @@ function detectCollision(rect1, rect2) {
 // update game state; dt is elapsed time in seconds
 function update(dt) {
   if (gameState !== 'playing') return;
-  // move cars only when playing (frame rate–independent)
+  // move cars (frame rate–independent)
   cars.forEach(car => car.update(dt));
-  // collision detection
+  // collision detection with cars
   for (const car of cars) {
     if (detectCollision(frog, car)) {
-      gameState = 'gameover';
+      // lose a life
+      lives--;
       playGameOverSound();
-      break;
+      if (lives > 0) {
+        // reset positions for next attempt
+        frog.x = START_X;
+        frog.y = START_Y;
+        frog.direction = 'front';
+        initCars();
+      } else {
+        // no lives left: game over
+        gameState = 'gameover';
+        // update and persist high score
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem('highScore', highScore);
+        }
+      }
+      return;
     }
   }
   // prize collection detection
-  if (gameState === 'playing' && detectCollision(frog, prize)) {
-    gameState = 'win';
+  if (detectCollision(frog, prize)) {
+    // increment score
+    score++;
     playWinSound();
+    // update high score on the fly
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem('highScore', highScore);
+    }
+    // reset frog and place a new prize
+    frog.x = START_X;
+    frog.y = START_Y;
+    frog.direction = 'front';
+    placePrize();
+    return;
   }
 }
 
@@ -272,43 +345,35 @@ function draw() {
   // draw road and vehicles
   drawRoad();
   cars.forEach(car => car.draw());
-  // if game over or win, draw semi-transparent backdrop first
-  if (gameState !== 'playing') {
+  // draw the otter sprite
+  drawFrog();
+  // draw HUD during play
+  if (gameState === 'playing') drawHUD();
+  if (gameState === 'gameover') {
+    // overlay on game over
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  }
-  // draw the otter sprite (in front of backdrop)
-  drawFrog();
-  // if game over or win, draw overlay text
-  if (gameState !== 'playing') {
     ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = '48px sans-serif';
-    const title = gameState === 'gameover' ? 'Game Over' : 'You Win!';
-    ctx.fillText(title, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+    ctx.fillText('Game Over', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 60);
+    ctx.font = '30px sans-serif';
+    ctx.fillText(`Score: ${score}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+    ctx.fillText(`High Score: ${highScore}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 40);
     ctx.font = '24px sans-serif';
-    ctx.fillText('Press Enter to restart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+    ctx.fillText('Press Enter to restart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80);
   }
 }
 
-// draw translucent overlay with message
-function drawOverlay() {
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  ctx.fillStyle = 'white';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = '48px sans-serif';
-  const title = gameState === 'gameover' ? 'Game Over' : 'You Win!';
-  ctx.fillText(title, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
-  ctx.font = '24px sans-serif';
-  ctx.fillText('Press Enter to restart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
-}
 
 function reset() {
-  frog.x = (CANVAS_WIDTH - FROG_SIZE) / 2;
-  frog.y = CANVAS_HEIGHT - FROG_SIZE - 5;
+  // reset lives and score
+  lives = maxLives;
+  score = 0;
+  // reset frog position
+  frog.x = START_X;
+  frog.y = START_Y;
   frog.direction = 'front';
   initCars();
   // place a new prize
