@@ -1,6 +1,12 @@
 // JavaScript code for Frogger
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+// load frog sprites
+const frogSprites = {};
+['front', 'left', 'right', 'dead', 'victory'].forEach(name => {
+  frogSprites[name] = new Image();
+  frogSprites[name].src = `sprites/${name}.png`;
+});
 // Audio context for procedural 8-bit sounds
 let audioCtx;
 function getAudioCtx() {
@@ -78,7 +84,7 @@ let frog = {
   y: CANVAS_HEIGHT - FROG_SIZE - 5,
   width: FROG_SIZE,
   height: FROG_SIZE,
-  color: 'lime'
+  direction: 'front'
 };
 
 class Car {
@@ -129,8 +135,21 @@ function initCars() {
 }
 
 function drawFrog() {
-  ctx.fillStyle = frog.color;
-  ctx.fillRect(frog.x, frog.y, frog.width, frog.height);
+  let spriteName;
+  if (gameState === 'gameover') {
+    spriteName = 'dead';
+  } else if (gameState === 'win') {
+    spriteName = 'victory';
+  } else {
+    spriteName = frog.direction || 'front';
+  }
+  const img = frogSprites[spriteName];
+  if (img && img.complete) {
+    ctx.drawImage(img, frog.x, frog.y, frog.width, frog.height);
+  } else {
+    ctx.fillStyle = 'lime';
+    ctx.fillRect(frog.x, frog.y, frog.width, frog.height);
+  }
 }
 
 function clearCanvas() {
@@ -198,6 +217,7 @@ function drawOverlay() {
 function reset() {
   frog.x = (CANVAS_WIDTH - FROG_SIZE) / 2;
   frog.y = CANVAS_HEIGHT - FROG_SIZE - 5;
+  frog.direction = 'front';
   initCars();
   gameState = 'playing';
 }
@@ -219,16 +239,32 @@ document.addEventListener('keydown', e => {
   const step = TILE_SIZE;
   switch (e.key) {
     case 'ArrowLeft':
-      if (frog.x - step >= 0) { frog.x -= step; playMoveSound(); }
+      if (frog.x - step >= 0) {
+        frog.x -= step;
+        frog.direction = 'left';
+        playMoveSound();
+      }
       break;
     case 'ArrowRight':
-      if (frog.x + step + frog.width <= CANVAS_WIDTH) { frog.x += step; playMoveSound(); }
+      if (frog.x + step + frog.width <= CANVAS_WIDTH) {
+        frog.x += step;
+        frog.direction = 'right';
+        playMoveSound();
+      }
       break;
     case 'ArrowUp':
-      if (frog.y - step >= 0) { frog.y -= step; playMoveSound(); }
+      if (frog.y - step >= 0) {
+        frog.y -= step;
+        frog.direction = 'front';
+        playMoveSound();
+      }
       break;
     case 'ArrowDown':
-      if (frog.y + step + frog.height <= CANVAS_HEIGHT) { frog.y += step; playMoveSound(); }
+      if (frog.y + step + frog.height <= CANVAS_HEIGHT) {
+        frog.y += step;
+        frog.direction = 'front';
+        playMoveSound();
+      }
       break;
   }
 });
