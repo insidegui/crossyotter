@@ -88,7 +88,7 @@ let frog = {
 };
 
 class Car {
-  constructor(x, y, width, height, speed, color, direction) {
+  constructor(x, y, width, height, speed, color, direction, spriteName) {
     this.x = x;
     this.y = y;
     this.width = width;
@@ -96,6 +96,7 @@ class Car {
     this.speed = speed;
     this.color = color;
     this.direction = direction; // 1 = right, -1 = left
+    this.spriteName = spriteName;
   }
 
   update() {
@@ -108,8 +109,23 @@ class Car {
   }
 
   draw() {
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.x, this.y, this.width, this.height);
+    const img = vehicleSprites[this.spriteName];
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.save();
+      if (this.direction === 1) {
+        // flip horizontally for right-moving vehicles
+        ctx.translate(this.x + this.width, this.y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img, 0, 0, this.width, this.height);
+      } else {
+        // normal draw for left-moving vehicles
+        ctx.drawImage(img, this.x, this.y, this.width, this.height);
+      }
+      ctx.restore();
+    } else {
+      ctx.fillStyle = this.color;
+      ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
   }
 }
 
@@ -118,9 +134,18 @@ const laneYs = [300, 250, 200, 150, 100];
 const speeds = [2, 3, 2.5, 3.5, 2.2];
 const directions = [1, -1, 1, -1, 1];
 const colors = ['red', 'yellow', 'orange', 'blue', 'purple'];
+// load numeric vehicle sprites vehicle_1..vehicle_12 (fallback to colored rectangles)
+const vehicleSprites = {};
+for (let i = 1; i <= 12; i++) {
+  const name = `vehicle_${i}`;
+  const img = new Image();
+  img.src = `sprites/${name}.png`;
+  vehicleSprites[name] = img;
+}
 
 function initCars() {
   cars = [];
+  let spriteCounter = 0;
   laneYs.forEach((y, idx) => {
     for (let i = 0; i < 3; i++) {
       const width = 60;
@@ -129,7 +154,9 @@ function initCars() {
       const speed = speeds[idx];
       const direction = directions[idx];
       const color = colors[idx];
-      cars.push(new Car(x, y, width, height, speed, color, direction));
+      const spriteName = `vehicle_${(spriteCounter % 12) + 1}`;
+      spriteCounter++;
+      cars.push(new Car(x, y, width, height, speed, color, direction, spriteName));
     }
   });
 }
