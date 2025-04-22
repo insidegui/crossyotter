@@ -84,6 +84,9 @@ const START_Y = CANVAS_HEIGHT - FROG_SIZE - 5;
 // for frame rate–independent movement
 // for frame rate–independent movement
 let lastTimestamp = null;
+// victory state duration and timing
+const VICTORY_DURATION = 1000; // ms to display victory
+let victoryStartTime = null;
 // movement repeat throttle for arrow keys (ms)
 const MOVE_INTERVAL = 150;
 let lastMoveTime = 0;
@@ -261,15 +264,32 @@ function initCars() {
 }
 
 function drawFrog() {
+  // choose sprite based on state
+  const isVictory = gameState === 'victory';
   let spriteName;
   if (gameState === 'gameover') {
     spriteName = 'dead';
+  } else if (isVictory) {
+    spriteName = 'victory';
   } else {
     spriteName = frog.direction || 'front';
   }
   const img = frogSprites[spriteName];
   if (img && img.complete) {
-    ctx.drawImage(img, frog.x, frog.y, frog.width, frog.height);
+    if (isVictory && victoryStartTime !== null) {
+      // animate victory sprite with a bounce/scale
+      const elapsed = performance.now() - victoryStartTime;
+      const scale = 1 + 0.2 * Math.sin((2 * Math.PI * elapsed) / 300);
+      const cx = frog.x + frog.width / 2;
+      const cy = frog.y + frog.height / 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, -frog.width / 2, -frog.height / 2, frog.width, frog.height);
+      ctx.restore();
+    } else {
+      ctx.drawImage(img, frog.x, frog.y, frog.width, frog.height);
+    }
   } else {
     ctx.fillStyle = 'lime';
     ctx.fillRect(frog.x, frog.y, frog.width, frog.height);
@@ -323,21 +343,29 @@ function update(dt) {
       return;
     }
   }
-  // prize collection detection
+  // prize collection detection -> trigger victory state
   if (detectCollision(frog, prize)) {
-    // increment score
-    score++;
+    gameState = 'victory';
+    // mark victory start time for animation
+    victoryStartTime = performance.now();
     playWinSound();
-    // update high score on the fly
-    if (score > highScore) {
-      highScore = score;
-      localStorage.setItem('highScore', highScore);
-    }
-    // reset frog and place a new prize
-    frog.x = START_X;
-    frog.y = START_Y;
-    frog.direction = 'front';
-    placePrize();
+    // after a delay, award score and reset for next prize
+    setTimeout(() => {
+      score++;
+      // update and persist high score
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('highScore', highScore);
+      }
+      // reset frog position and new prize
+      frog.x = START_X;
+      frog.y = START_Y;
+      frog.direction = 'front';
+      placePrize();
+      // allow movement after victory
+      lastMoveTime = Date.now();
+      gameState = 'playing';
+    }, VICTORY_DURATION);
     return;
   }
 }
@@ -351,8 +379,8 @@ function draw() {
   cars.forEach(car => car.draw());
   // draw the otter sprite
   drawFrog();
-  // draw HUD during play
-  if (gameState === 'playing') drawHUD();
+  // draw HUD during play or victory
+  if (gameState === 'playing' || gameState === 'victory') drawHUD();
   if (gameState === 'gameover') {
     // overlay on game over
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
