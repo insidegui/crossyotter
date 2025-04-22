@@ -306,7 +306,7 @@ function clearCanvas() {
 }
 
 function drawRoad() {
-  ctx.fillStyle = '#555';
+  ctx.fillStyle = '#333';
   laneYs.forEach(y => {
     ctx.fillRect(0, y - 5, CANVAS_WIDTH, TILE_SIZE);
   });
