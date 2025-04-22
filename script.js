@@ -153,20 +153,20 @@ function detectCollision(rect1, rect2) {
 
 function update() {
   if (gameState !== 'playing') return;
+  // move cars only when playing
   cars.forEach(car => car.update());
   // collision detection
-  cars.forEach(car => {
+  for (const car of cars) {
     if (detectCollision(frog, car)) {
       gameState = 'gameover';
       playGameOverSound();
-      setTimeout(() => { alert('Game Over!'); reset(); }, 600);
+      break;
     }
-  });
+  }
   // win detection
-  if (frog.y < TILE_SIZE) {
+  if (gameState === 'playing' && frog.y < TILE_SIZE) {
     gameState = 'win';
     playWinSound();
-    setTimeout(() => { alert('You Win!'); reset(); }, 600);
   }
 }
 
@@ -175,6 +175,24 @@ function draw() {
   drawRoad();
   cars.forEach(car => car.draw());
   drawFrog();
+  // overlay on game over or win
+  if (gameState !== 'playing') {
+    drawOverlay();
+  }
+}
+
+// draw translucent overlay with message
+function drawOverlay() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  ctx.fillStyle = 'white';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '48px sans-serif';
+  const title = gameState === 'gameover' ? 'Game Over' : 'You Win!';
+  ctx.fillText(title, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+  ctx.font = '24px sans-serif';
+  ctx.fillText('Press Enter to restart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
 }
 
 function reset() {
@@ -191,19 +209,27 @@ function gameLoop() {
 }
 
 document.addEventListener('keydown', e => {
+  // if not playing, allow restart on Enter
+  if (gameState !== 'playing') {
+    if (e.key === 'Enter') {
+      reset();
+    }
+    return;
+  }
   const step = TILE_SIZE;
-  if (e.key === 'ArrowLeft' && frog.x - step >= 0) {
-    frog.x -= step;
-    playMoveSound();
-  } else if (e.key === 'ArrowRight' && frog.x + step + frog.width <= CANVAS_WIDTH) {
-    frog.x += step;
-    playMoveSound();
-  } else if (e.key === 'ArrowUp' && frog.y - step >= 0) {
-    frog.y -= step;
-    playMoveSound();
-  } else if (e.key === 'ArrowDown' && frog.y + step + frog.height <= CANVAS_HEIGHT) {
-    frog.y += step;
-    playMoveSound();
+  switch (e.key) {
+    case 'ArrowLeft':
+      if (frog.x - step >= 0) { frog.x -= step; playMoveSound(); }
+      break;
+    case 'ArrowRight':
+      if (frog.x + step + frog.width <= CANVAS_WIDTH) { frog.x += step; playMoveSound(); }
+      break;
+    case 'ArrowUp':
+      if (frog.y - step >= 0) { frog.y -= step; playMoveSound(); }
+      break;
+    case 'ArrowDown':
+      if (frog.y + step + frog.height <= CANVAS_HEIGHT) { frog.y += step; playMoveSound(); }
+      break;
   }
 });
 
