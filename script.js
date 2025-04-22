@@ -193,10 +193,23 @@ function draw() {
   clearCanvas();
   drawRoad();
   cars.forEach(car => car.draw());
-  drawFrog();
-  // overlay on game over or win
+  // if game over or win, draw semi-transparent backdrop first
   if (gameState !== 'playing') {
-    drawOverlay();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  }
+  // draw the otter sprite (in front of backdrop)
+  drawFrog();
+  // if game over or win, draw overlay text
+  if (gameState !== 'playing') {
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '48px sans-serif';
+    const title = gameState === 'gameover' ? 'Game Over' : 'You Win!';
+    ctx.fillText(title, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+    ctx.font = '24px sans-serif';
+    ctx.fillText('Press Enter to restart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
   }
 }
 
