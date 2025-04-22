@@ -146,14 +146,19 @@ for (let i = 1; i <= 12; i++) {
 function initCars() {
   cars = [];
   let spriteCounter = 0;
+  const CAR_COUNT = 3;
   laneYs.forEach((y, idx) => {
-    for (let i = 0; i < 3; i++) {
-      const width = 60;
-      const height = 40;
-      const x = Math.random() * CANVAS_WIDTH;
-      const speed = speeds[idx];
-      const direction = directions[idx];
-      const color = colors[idx];
+    const width = 60;
+    const height = 40;
+    // evenly space vehicles so they don't overlap
+    const totalCarWidth = CAR_COUNT * width;
+    const totalGap = CANVAS_WIDTH - totalCarWidth;
+    const gap = totalGap / (CAR_COUNT + 1);
+    const speed = speeds[idx];
+    const direction = directions[idx];
+    const color = colors[idx];
+    for (let i = 0; i < CAR_COUNT; i++) {
+      const x = gap + i * (width + gap);
       const spriteName = `vehicle_${(spriteCounter % 12) + 1}`;
       spriteCounter++;
       cars.push(new Car(x, y, width, height, speed, color, direction, spriteName));
