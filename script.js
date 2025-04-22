@@ -146,6 +146,45 @@ for (let i = 1; i <= 12; i++) {
   img.src = `sprites/${name}.png`;
   vehicleSprites[name] = img;
 }
+// load prize sprites (prize_1..prize_4)
+const prizeSprites = {};
+for (let i = 1; i <= 4; i++) {
+  const name = `prize_${i}`;
+  const img = new Image();
+  img.src = `sprites/${name}.png`;
+  prizeSprites[name] = img;
+}
+
+// prize object
+let prize = { x: 0, y: 0, width: FROG_SIZE, height: FROG_SIZE, spriteName: '' };
+
+// position the prize randomly within the top row
+function placePrize() {
+  const initX = (CANVAS_WIDTH - FROG_SIZE) / 2;
+  const maxK = Math.floor((CANVAS_WIDTH - FROG_SIZE - initX) / TILE_SIZE);
+  const minK = -Math.floor(initX / TILE_SIZE);
+  const allowedXs = [];
+  for (let k = minK; k <= maxK; k++) {
+    allowedXs.push(initX + k * TILE_SIZE);
+  }
+  prize.x = allowedXs[Math.floor(Math.random() * allowedXs.length)];
+  prize.y = (TILE_SIZE - FROG_SIZE) / 2;
+  prize.width = FROG_SIZE;
+  prize.height = FROG_SIZE;
+  const idx = Math.floor(Math.random() * 4) + 1;
+  prize.spriteName = `prize_${idx}`;
+}
+
+// draw the prize
+function drawPrize() {
+  const img = prizeSprites[prize.spriteName];
+  if (img && img.complete && img.naturalWidth > 0) {
+    ctx.drawImage(img, prize.x, prize.y, prize.width, prize.height);
+  } else {
+    ctx.fillStyle = 'gold';
+    ctx.fillRect(prize.x, prize.y, prize.width, prize.height);
+  }
+}
 
 function initCars() {
   cars = [];
@@ -219,8 +258,8 @@ function update(dt) {
       break;
     }
   }
-  // win detection
-  if (gameState === 'playing' && frog.y < TILE_SIZE) {
+  // prize collection detection
+  if (gameState === 'playing' && detectCollision(frog, prize)) {
     gameState = 'win';
     playWinSound();
   }
@@ -228,6 +267,9 @@ function update(dt) {
 
 function draw() {
   clearCanvas();
+  // draw prize in top row
+  drawPrize();
+  // draw road and vehicles
   drawRoad();
   cars.forEach(car => car.draw());
   // if game over or win, draw semi-transparent backdrop first
@@ -269,6 +311,8 @@ function reset() {
   frog.y = CANVAS_HEIGHT - FROG_SIZE - 5;
   frog.direction = 'front';
   initCars();
+  // place a new prize
+  placePrize();
   gameState = 'playing';
   // reset timing for consistent speed
   lastTimestamp = null;
