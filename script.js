@@ -82,7 +82,11 @@ const CANVAS_HEIGHT = canvas.height;
 const START_X = (CANVAS_WIDTH - FROG_SIZE) / 2;
 const START_Y = CANVAS_HEIGHT - FROG_SIZE - 5;
 // for frame rate–independent movement
+// for frame rate–independent movement
 let lastTimestamp = null;
+// movement repeat throttle for arrow keys (ms)
+const MOVE_INTERVAL = 150;
+let lastMoveTime = 0;
 
 // main character: frog (otter) with direction state
 let frog = {
@@ -381,6 +385,8 @@ function reset() {
   gameState = 'playing';
   // reset timing for consistent speed
   lastTimestamp = null;
+  // prevent immediate movement after reset (throttle)
+  lastMoveTime = Date.now();
 }
 
 // main loop: timestamp is provided by requestAnimationFrame (ms)
@@ -403,6 +409,9 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
+  // throttle only auto-repeat moves, allow fresh presses regardless of rate
+  const now = Date.now();
+  if (e.repeat && now - lastMoveTime < MOVE_INTERVAL) return;
   const step = TILE_SIZE;
   switch (e.key) {
     case 'ArrowLeft':
@@ -410,6 +419,7 @@ document.addEventListener('keydown', e => {
         frog.x -= step;
         frog.direction = 'left';
         playMoveSound();
+        lastMoveTime = now;
       }
       break;
     case 'ArrowRight':
@@ -417,6 +427,7 @@ document.addEventListener('keydown', e => {
         frog.x += step;
         frog.direction = 'right';
         playMoveSound();
+        lastMoveTime = now;
       }
       break;
     case 'ArrowUp':
@@ -424,6 +435,7 @@ document.addEventListener('keydown', e => {
         frog.y -= step;
         frog.direction = 'front';
         playMoveSound();
+        lastMoveTime = now;
       }
       break;
     case 'ArrowDown':
@@ -431,6 +443,7 @@ document.addEventListener('keydown', e => {
         frog.y += step;
         frog.direction = 'front';
         playMoveSound();
+        lastMoveTime = now;
       }
       break;
   }
