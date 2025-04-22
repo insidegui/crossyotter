@@ -84,6 +84,9 @@ const START_Y = CANVAS_HEIGHT - FROG_SIZE - 5;
 // for frame rate–independent movement
 // for frame rate–independent movement
 let lastTimestamp = null;
+// dynamic speed multiplier: slower start, increases per win
+let gameSpeedMultiplier = 0.8;
+const SPEED_INCREMENT = 0.05;
 // victory state duration and timing
 const VICTORY_DURATION = 1000; // ms to display victory
 let victoryStartTime = null;
@@ -114,8 +117,8 @@ class Car {
 
   // dt is elapsed time in seconds since last frame
   update(dt) {
-    // original speed values are in px per frame at 60fps
-    this.x += this.speed * 60 * dt * this.direction;
+    // original speed in px per frame @60fps, scaled by dynamic multiplier
+    this.x += this.speed * 60 * dt * gameSpeedMultiplier * this.direction;
     if (this.direction === 1 && this.x > CANVAS_WIDTH) {
       this.x = -this.width;
     } else if (this.direction === -1 && this.x + this.width < 0) {
@@ -351,6 +354,9 @@ function update(dt) {
     playWinSound();
     // after a delay, award score and reset for next prize
     setTimeout(() => {
+      // increase difficulty for next round
+      gameSpeedMultiplier += SPEED_INCREMENT;
+      // award score
       score++;
       // update and persist high score
       if (score > highScore) {
@@ -362,8 +368,9 @@ function update(dt) {
       frog.y = START_Y;
       frog.direction = 'front';
       placePrize();
-      // allow movement after victory
+      // allow movement after victory and clear victory state
       lastMoveTime = Date.now();
+      victoryStartTime = null;
       gameState = 'playing';
     }, VICTORY_DURATION);
     return;
@@ -400,9 +407,10 @@ function draw() {
 
 
 function reset() {
-  // reset lives and score
+  // reset lives, score, and difficulty multiplier
   lives = maxLives;
   score = 0;
+  gameSpeedMultiplier = 0.8;
   // reset frog position
   frog.x = START_X;
   frog.y = START_Y;
