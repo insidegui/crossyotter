@@ -85,7 +85,8 @@ const START_Y = CANVAS_HEIGHT - FROG_SIZE - 5;
 // for frame rate–independent movement
 let lastTimestamp = null;
 // dynamic speed multiplier: slower start, increases per win
-let gameSpeedMultiplier = 0.8;
+// dynamic speed multiplier: slower start (easier) increases per win
+let gameSpeedMultiplier = 0.6;
 const SPEED_INCREMENT = 0.05;
 // victory state duration and timing
 const VICTORY_DURATION = 1000; // ms to display victory
@@ -246,7 +247,8 @@ function drawPrize() {
 function initCars() {
   cars = [];
   let spriteCounter = 0;
-  const CAR_COUNT = 3;
+  // determine number of cars per lane based on current level (score): easier first two levels
+  let CAR_COUNT = score < 2 ? 2 : 3;
   laneYs.forEach((y, idx) => {
     const width = 60;
     const height = 40;
@@ -368,6 +370,8 @@ function update(dt) {
       frog.y = START_Y;
       frog.direction = 'front';
       placePrize();
+      // regenerate cars for new level with updated count and speed
+      initCars();
       // allow movement after victory and clear victory state
       lastMoveTime = Date.now();
       victoryStartTime = null;
@@ -410,7 +414,7 @@ function reset() {
   // reset lives, score, and difficulty multiplier
   lives = maxLives;
   score = 0;
-  gameSpeedMultiplier = 0.8;
+  gameSpeedMultiplier = 0.6;
   // reset frog position
   frog.x = START_X;
   frog.y = START_Y;
