@@ -1,6 +1,66 @@
 // JavaScript code for Frogger
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+// Audio context for procedural 8-bit sounds
+let audioCtx;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+// play a single oscillator beep
+function playSound(frequency = 440, type = 'square', duration = 0.1, volume = 0.2) {
+  const ctx = getAudioCtx();
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, now);
+  gain.gain.setValueAtTime(volume, now);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + duration);
+}
+// simple move sound
+function playMoveSound() {
+  playSound(800, 'square', 0.05, 0.15);
+}
+// game over sound: descending tones
+function playGameOverSound() {
+  const ctx = getAudioCtx();
+  const freqs = [600, 400, 200, 100];
+  freqs.forEach((f, i) => {
+    const now = ctx.currentTime + i * 0.15;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(f, now);
+    gain.gain.setValueAtTime(0.2, now);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  });
+}
+// win sound: ascending tones
+function playWinSound() {
+  const ctx = getAudioCtx();
+  const freqs = [200, 400, 600, 800];
+  freqs.forEach((f, i) => {
+    const now = ctx.currentTime + i * 0.15;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(f, now);
+    gain.gain.setValueAtTime(0.2, now);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  });
+}
+// track game state to avoid multiple triggers
+let gameState = 'playing';
 
 const TILE_SIZE = 50;
 const FROG_SIZE = 40;
@@ -86,16 +146,21 @@ function detectCollision(rect1, rect2) {
 }
 
 function update() {
+  if (gameState !== 'playing') return;
   cars.forEach(car => car.update());
+  // collision detection
   cars.forEach(car => {
     if (detectCollision(frog, car)) {
-      alert('Game Over!');
-      reset();
+      gameState = 'gameover';
+      playGameOverSound();
+      setTimeout(() => { alert('Game Over!'); reset(); }, 600);
     }
   });
+  // win detection
   if (frog.y < TILE_SIZE) {
-    alert('You Win!');
-    reset();
+    gameState = 'win';
+    playWinSound();
+    setTimeout(() => { alert('You Win!'); reset(); }, 600);
   }
 }
 
@@ -110,6 +175,7 @@ function reset() {
   frog.x = (CANVAS_WIDTH - FROG_SIZE) / 2;
   frog.y = CANVAS_HEIGHT - FROG_SIZE - 5;
   initCars();
+  gameState = 'playing';
 }
 
 function gameLoop() {
@@ -122,12 +188,16 @@ document.addEventListener('keydown', e => {
   const step = TILE_SIZE;
   if (e.key === 'ArrowLeft' && frog.x - step >= 0) {
     frog.x -= step;
+    playMoveSound();
   } else if (e.key === 'ArrowRight' && frog.x + step + frog.width <= CANVAS_WIDTH) {
     frog.x += step;
+    playMoveSound();
   } else if (e.key === 'ArrowUp' && frog.y - step >= 0) {
     frog.y -= step;
+    playMoveSound();
   } else if (e.key === 'ArrowDown' && frog.y + step + frog.height <= CANVAS_HEIGHT) {
     frog.y += step;
+    playMoveSound();
   }
 });
 
