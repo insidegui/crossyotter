@@ -4,7 +4,13 @@ const ctx = canvas.getContext('2d');
 // Audio context for procedural 8-bit sounds
 let audioCtx;
 function getAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  // auto-resume if suspended (e.g., after modal or inactivity)
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
   return audioCtx;
 }
 // play a single oscillator beep
