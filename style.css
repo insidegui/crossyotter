@@ -24,7 +24,4 @@ canvas {
   background-color: #000;
   margin: 20px 0;
   border-radius: 8px;
-  /* Scale canvas responsively on smaller screens */
-  max-width: 100%;
-  height: auto;
 }
