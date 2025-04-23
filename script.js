@@ -488,7 +488,80 @@ document.addEventListener('keydown', e => {
       break;
   }
 });
+// touch controls for mobile: tap to move forward, swipe to move in any direction
+let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+canvas.style.touchAction = 'none';
 
+/**
+ * Handler for touchstart events. Captures initial touch position and time.
+ */
+function handleTouchStart(e) {
+  if (gameState !== 'playing') return;
+  if (e.touches.length === 1) {
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchStartTime = Date.now();
+  }
+  e.preventDefault();
+}
+
+/**
+ * Handler for touchend events. Determines swipe or tap and moves frog.
+ */
+function handleTouchEnd(e) {
+  if (gameState !== 'playing') return;
+  const touch = e.changedTouches[0];
+  const dx = touch.clientX - touchStartX;
+  const dy = touch.clientY - touchStartY;
+  const absDx = Math.abs(dx), absDy = Math.abs(dy);
+  const now = Date.now();
+  const step = TILE_SIZE;
+  // tap (short distance & quick)
+  if (absDx < 10 && absDy < 10 && (now - touchStartTime) < 200) {
+    if (frog.y - step >= 0) {
+      frog.y -= step;
+      frog.direction = 'front';
+      playMoveSound();
+      lastMoveTime = now;
+    }
+  } else {
+    if (absDx > absDy) {
+      // horizontal swipe
+      if (dx > 0 && frog.x + step + frog.width <= CANVAS_WIDTH) {
+        frog.x += step;
+        frog.direction = 'right';
+        playMoveSound();
+        lastMoveTime = now;
+      } else if (dx < 0 && frog.x - step >= 0) {
+        frog.x -= step;
+        frog.direction = 'left';
+        playMoveSound();
+        lastMoveTime = now;
+      }
+    } else {
+      // vertical swipe
+      if (dy < 0 && frog.y - step >= 0) {
+        frog.y -= step;
+        frog.direction = 'front';
+        playMoveSound();
+        lastMoveTime = now;
+      } else if (dy > 0 && frog.y + step + frog.height <= CANVAS_HEIGHT) {
+        frog.y += step;
+        frog.direction = 'front';
+        playMoveSound();
+        lastMoveTime = now;
+      }
+    }
+  }
+  e.preventDefault();
+}
+
+// Attach touch handlers to both the canvas and document to capture swipes below the game area
+canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+document.addEventListener('touchstart', handleTouchStart, { passive: false });
+document.addEventListener('touchend', handleTouchEnd, { passive: false });
 // start game loop with frame timing
 reset();
 lastTimestamp = null;
